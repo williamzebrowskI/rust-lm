@@ -16,63 +16,76 @@ function HomePage({ progress }: Props) {
     return { total, done };
   }, [state.completedLessons.length]);
 
-  const firstLesson = curriculum[0];
+  const nextLesson = useMemo(() => {
+    const remaining = curriculum.find((l) => !state.completedLessons.includes(l.id));
+    return remaining ?? curriculum[0];
+  }, [state.completedLessons]);
+
+  const totalSections = useMemo(
+    () => curriculum.reduce((acc, l) => acc + l.sections.length, 0),
+    []
+  );
+  const totalExercises = useMemo(
+    () =>
+      curriculum.reduce(
+        (acc, l) =>
+          acc +
+          l.sections.filter((s) => !!s.exercise).length +
+          (l.exercise ? 1 : 0),
+        0
+      ),
+    []
+  );
 
   return (
     <div className="page home">
-      <section className="hero">
-        <div>
+      <section className="hero hero-big-numbers">
+        <div className="hero-main">
           <p className="eyebrow">From Dust to Rust</p>
-          <h1>Shape your Rust skills, one focused chapter at a time.</h1>
-          <p className="lead">
-            A respectful, beginner-to-expert path for Rust. Read concise chapters, run code, answer quizzes, and track progress locally. No logins, no fluff—just the essentials to become productive.
+          <h1 className="hero-title">Shape your Rust skills with intent.</h1>
+          <p className="hero-sub">
+            Chapters you can actually finish, code you can run, and progress that stays with you. Built for learners who want a clear, modern path into Rust.
           </p>
-          <div className="stats">
-            <span className="pill strong">{totals.done}/{totals.total} lessons completed</span>
-            <span className="pill">Local progress • No signup</span>
-          </div>
-          <div className="actions">
-            {firstLesson && (
-              <Link to={`/lesson/${firstLesson.id}`} className="btn">
-                Start with {firstLesson.title}
+          <div className="hero-cta-row">
+            {nextLesson && (
+              <Link to={`/lesson/${nextLesson.id}`} className="btn">
+                Continue learning
               </Link>
             )}
-            <Link to="/ide" className="btn ghost">Open Project IDE</Link>
+            <Link to="/ide" className="btn ghost">
+              Project IDE
+            </Link>
           </div>
-        </div>
-        <div className="hero-card">
-          <h3>What you get</h3>
-          <ul>
-            <li>Structured chapters from tooling to advanced topics.</li>
-            <li>Runnable examples and code exercises with backend checks.</li>
-            <li>Section locking to guide you in order—no skipping ahead.</li>
-            <li>Progress saved locally (IndexedDB) without accounts.</li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="feature-grid">
-        <div className="card">
-          <p className="eyebrow">Curriculum</p>
-          <h3>Beginner → Expert</h3>
-          <p className="muted">
-            Follow the sidebar to browse chapters. Each chapter has gated sections, quizzes, and exercises to keep you on track.
-          </p>
-        </div>
-        <div className="card">
-          <p className="eyebrow">Practice</p>
-          <h3>Project IDE</h3>
-          <p className="muted">
-            Open the built-in IDE to experiment with Rust code, run tests, and manage files in a VS Code–style workspace.
-          </p>
-          <Link to="/ide" className="btn mini">Launch IDE</Link>
-        </div>
-        <div className="card">
-          <p className="eyebrow">Progress</p>
-          <h3>Your pace, saved locally</h3>
-          <p className="muted">
-            Quiz answers, section completion, and chapter tests are stored in your browser. Come back anytime and continue where you left off.
-          </p>
+          <div className="hero-metrics">
+            <div className="metric-card primary">
+              <span className="metric-label">Lessons</span>
+              <span className="metric-value">
+                {totals.done}/{totals.total}
+              </span>
+              <span className="metric-caption">Completed</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Sections</span>
+              <span className="metric-value">{totalSections}</span>
+              <span className="metric-caption">Structured steps</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Exercises</span>
+              <span className="metric-value">{totalExercises}</span>
+              <span className="metric-caption">Hands-on practice</span>
+            </div>
+          </div>
+          <div className="hero-focus">
+            <div className="focus-label">Today’s focus</div>
+            <div className="focus-content">
+              <h4>Install, build, test</h4>
+              <ul>
+                <li>rustup + toolchain basics</li>
+                <li>cargo new, build, run, test</li>
+                <li>fmt, clippy, doc</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
     </div>

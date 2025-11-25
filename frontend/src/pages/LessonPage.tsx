@@ -16,7 +16,7 @@ function LessonPage({ progress }: Props) {
   const [openSections, setOpenSections] = useState<Record<number | string, boolean>>({});
   const exercisePasses = progress.state.exercisePasses;
   const sectionQuizScores = progress.state.sectionQuizScores;
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   if (!lesson) {
     return (
@@ -48,16 +48,18 @@ function LessonPage({ progress }: Props) {
   });
 
   const allSectionsDone = sectionStates.every((s) => s.done);
+  const completedSections = sectionStates.filter((s) => s.done).length;
+  const totalSections = sectionStates.length;
+  const totalExercises =
+    lesson.sections.filter((s) => s.exercise).length + (lesson.exercise ? 1 : 0);
+  const completedExercises = Object.keys(exercisePasses).filter((id) =>
+    lesson.sections.some((s) => s.exercise?.id === id)
+  ).length + (lesson.exercise && exercisePasses[lesson.exercise.id] ? 1 : 0);
+  const isChapterTestPassed = progress.state.quizScores[lesson.id] === 100;
 
   const canComplete =
-    progress.state.quizScores[lesson.id] === 100 &&
+    isChapterTestPassed &&
     exerciseIds.every((id) => exercisePasses[id]);
-
-  const markComplete = () => {
-    if (canComplete) {
-      progress.markLessonComplete(lesson.id);
-    }
-  };
 
   const renderInlineCode = (text: string) => {
     const parts = text.split(/(`[^`]+`)/g);
@@ -78,19 +80,71 @@ function LessonPage({ progress }: Props) {
       <div className="breadcrumb">
         <Link to="/">Home</Link> / <span>{lesson.level}</span>
       </div>
-      <header className="lesson-header">
-        <div>
+      <section className="lesson-hero hero-big-numbers">
+        <div className="hero-main">
           <p className="eyebrow">{lesson.level}</p>
-          <h1>{lesson.title}</h1>
-          <p className="lead">{lesson.description}</p>
+          <h2 className="hero-title">{lesson.title}</h2>
+          <p className="hero-sub">{lesson.description}</p>
+          <div className="hero-cta-row">
+            <button
+              className="btn mini"
+              onClick={() => {
+                setOpenSections((prev) => ({ ...prev, 0: true }));
+                sectionRefs.current[sectionStates[0]?.sectionKey]?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }}
+            >
+              Start this chapter
+            </button>
+          </div>
+          <div className="hero-metrics">
+            <div className="metric-card primary">
+              <span className="metric-label">Sections</span>
+              <span className="metric-value">
+                {completedSections}/{totalSections}
+              </span>
+              <span className="metric-caption">Completed</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Exercises</span>
+              <span className="metric-value">
+                {completedExercises}/{totalExercises}
+              </span>
+              <span className="metric-caption">Hands-on practice</span>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Chapter Test</span>
+              <span className="metric-value">
+                {isChapterTestPassed ? "100%" : "Locked"}
+              </span>
+              <span className="metric-caption">Unlock after sections</span>
+            </div>
+          </div>
         </div>
-        <div className="lesson-actions">
-          <button className="ghost" onClick={markComplete} disabled={!canComplete}>
-            {canComplete ? "Mark complete" : "Finish quiz + exercises to complete"}
-          </button>
-          {progress.isLessonComplete(lesson.id) && <span className="pill strong">Completed</span>}
+      </section>
+
+      <div className="lesson-progress-strip">
+        <div className="progress-item">
+          <span className="label">Sections</span>
+          <span className="value">
+            {completedSections}/{totalSections}
+          </span>
         </div>
-      </header>
+        <div className="progress-item">
+          <span className="label">Exercises</span>
+          <span className="value">
+            {completedExercises}/{totalExercises}
+          </span>
+        </div>
+        <div className="progress-item">
+          <span className="label">Chapter Test</span>
+          <span className="value">
+            {isChapterTestPassed ? "Test passed ✅" : "Test locked 🔒"}
+          </span>
+        </div>
+      </div>
 
       {lesson.stub && (
         <div className="card stub-card">
@@ -103,7 +157,7 @@ function LessonPage({ progress }: Props) {
         const state = sectionStates[idx];
         const priorDone = idx === 0 || sectionStates.slice(0, idx).every((s) => s.done);
         const locked = !priorDone && !state.done;
-        const isOpen = !locked && openSections[idx] !== false;
+        const isOpen = !locked && openSections[idx] === true;
 
         return (
           <section
@@ -213,31 +267,28 @@ function LessonPage({ progress }: Props) {
                 }}
                 onAnswersChange={(ans) => progress.recordQuizAnswers(lesson.id, ans)}
               />
-              {lesson.exercise && (
-                <CodeExerciseBlock
-                  lessonId={lesson.id}
-                  lessonTitle={lesson.title}
-                  exercise={lesson.exercise}
-                  questionNumber={(lesson.quiz?.length || 0) + 1}
-                  onPass={() => {
-                    setExercisePasses((prev) => ({ ...prev, [lesson.exercise!.id]: true }));
-                  }}
-                />
-              )}
-            </>
+                  {lesson.exercise && (
+                    <CodeExerciseBlock
+                      lessonId={lesson.id}
+                      lessonTitle={lesson.title}
+                      exercise={lesson.exercise}
+                      questionNumber={(lesson.quiz?.length || 0) + 1}
+                      onPass={() => progress.recordExercisePass(lesson.exercise!.id)}
+                    />
+                  )}
+                </>
           )}
         </section>
       )}
 
       {canComplete && !progress.isLessonComplete(lesson.id) && (
-          <div className="card success-callout">
-            <div>
-              <p className="eyebrow">Great work</p>
-              <p>All exercises passed and quiz scored 100%. Mark the lesson complete.</p>
-            </div>
-            <button onClick={markComplete}>Mark complete</button>
+        <div className="card success-callout">
+          <div>
+            <p className="eyebrow">Great work</p>
+            <p>All exercises passed and Chapter Test scored 100%. Progress will be marked automatically.</p>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }

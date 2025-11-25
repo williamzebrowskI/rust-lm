@@ -13,8 +13,6 @@ type IdeNode =
 const defaultCode = `fn main() {
     println!("Hello from the Project IDE!");
 }
-
-// Add helper functions below and click Run Tests
 `;
 
 const defaultTests = `#[cfg(test)]
@@ -64,7 +62,7 @@ function ProjectIDE() {
     setError(null);
     setResults([]);
     setOutput(null);
-    setTerminalLines((prev) => [...prev, "> cargo test (simulated)"]);
+    setTerminalLines((prev) => [...prev, "Running tests..."]);
     try {
       const response = await runTests({
         userCode: files["main.rs"],
@@ -76,10 +74,13 @@ function ProjectIDE() {
       setResults(response.results);
       setOutput(response.rawOutput ?? null);
       setStatus("done");
-      if (response.rawOutput !== undefined) {
-        const log = response.rawOutput;
-        setTerminalLines((prev) => [...prev, log]);
-      }
+      setTerminalLines((prev) => [
+        ...prev,
+        ...response.results.map(
+          (r) => `${r.pass ? "ok" : "fail"} - ${r.name}${r.message ? `: ${r.message}` : ""}`
+        ),
+        response.rawOutput ? response.rawOutput : "",
+      ].filter((l) => l !== ""));
     } catch (err) {
       setStatus("done");
       setError(err instanceof Error ? err.message : String(err));
@@ -429,13 +430,13 @@ function ProjectIDE() {
         setTerminalLines((prev) => [...prev, `rustc: cannot find ${pathArg}`]);
         return;
       }
-      setTerminalLines((prev) => [...prev, `Compiling ${target} (simulated)`]);
+      setTerminalLines((prev) => [...prev, `Compiling ${target}`]);
       await handleRun();
       return;
     }
 
     if (binary.startsWith("./")) {
-      setTerminalLines((prev) => [...prev, `Running binary ${binary} (simulated)`]);
+      setTerminalLines((prev) => [...prev, `Running binary ${binary}`]);
       await handleRun();
       return;
     }
@@ -800,23 +801,6 @@ function ProjectIDE() {
           </div>
           <InlineCodeEditor value={files[currentFile]} onChange={onEdit} onSave={markSaved} />
         </div>
-      </div>
-
-      <div className="ide-results">
-        {results.map((r) => (
-          <div key={r.name} className={`result ${r.pass ? "pass" : "fail"}`}>
-            <span>{r.name}</span>
-            <span>{r.pass ? "pass" : "fail"}</span>
-            {r.message && <p className="message">{r.message}</p>}
-          </div>
-        ))}
-        {error && <p className="error">{error}</p>}
-        {output && (
-          <details>
-            <summary>Runner output</summary>
-            <HighlightedCode code={output} level="Beginner" />
-          </details>
-        )}
       </div>
 
       <div className="ide-terminal">
